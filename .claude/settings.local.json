@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev:*)",
+      "Skill(frontend-design)",
+      "Bash(gh repo create:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(gh auth status:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh auth:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git config:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd hand tracking, polaroid gallery, and all travel photos\n\n- Hand tracking with gesture controls \\(pan, zoom, dwell-click\\)\n- Polaroid-style photo viewer with carousel\n- All location photos for Seattle, Sammamish, Irvine, Greece, Vancouver, Bay Area\n- Retro/pixel aesthetic intro pages\n- Dark tactical map style\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(GIT_TERMINAL_PROMPT=0 git push:*)",
+      "Bash(vercel:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

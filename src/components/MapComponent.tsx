@@ -85,9 +85,11 @@ const MapComponent = forwardRef<MapComponentHandle, MapComponentProps>(({
       worldCopyJump: true
     });
 
-    // No-labels dark map tiles (Stamen Toner Background - no labels)
-    L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_background/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; Stamen Design &copy; OpenStreetMap'
+    // Dark map tiles (CartoDB Dark Matter - free, no API key needed)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20
     }).addTo(map);
 
     // Zoom controls at bottom right
