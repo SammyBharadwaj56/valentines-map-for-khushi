@@ -1,6 +1,6 @@
 import React from "react";
 import { LocationData } from "../types";
-import { SIDEBAR_TITLE, SIDEBAR_PIN_EMOJI } from "../config";
+import { SIDEBAR_TITLE } from "../config";
 
 interface SidebarProps {
   locations: LocationData[];
@@ -14,31 +14,48 @@ const Sidebar: React.FC<SidebarProps> = ({
   selectedId,
 }) => {
   return (
-    <div className="hidden md:flex flex-col w-64 bg-white/80 backdrop-blur-md border-r border-gray-200 z-[500] h-full">
-      <div className="p-6 pb-4">
-        <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">
+    <div className="hidden md:flex flex-col w-72 bg-[#0a0a0a] border-l border-[#333] h-full">
+      {/* Header */}
+      <div className="p-4 border-b border-[#333]">
+        <div className="flex items-center gap-2 text-[#666] text-xs font-pixel uppercase tracking-widest">
+          <span className="text-[#ff2d95]">◈</span>
           {SIDEBAR_TITLE}
-        </h2>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-6">
-        <div className="space-y-1">
-          {locations.map((loc) => (
+
+      {/* Locations list */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="space-y-2">
+          {locations.map((loc, index) => (
             <button
               key={loc.id}
               onClick={() => onSelect(loc)}
-              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center gap-3 ${
+              className={`w-full text-left p-3 transition-all font-pixel text-sm border ${
                 selectedId === loc.id
-                  ? "bg-pink-100 text-pink-700 font-semibold"
-                  : "text-gray-600 hover:bg-gray-100"
+                  ? "bg-[#ff2d95]/10 border-[#ff2d95] text-[#ff2d95]"
+                  : "bg-transparent border-[#333] text-[#888] hover:border-[#555] hover:text-[#ccc]"
               }`}
             >
-              <span className="text-lg">{SIDEBAR_PIN_EMOJI}</span>
-              <div className="truncate">
-                <div className="font-medium truncate">{loc.name}</div>
-                <div className="text-[10px] opacity-70">{loc.date}</div>
+              <div className="flex items-start gap-3">
+                <span className="text-[#555] text-xs mt-0.5">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <div className="uppercase tracking-wide">{loc.name}</div>
+                  {loc.date && (
+                    <div className="text-xs text-[#555] mt-1">{loc.date}</div>
+                  )}
+                </div>
               </div>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-[#333]">
+        <div className="text-[10px] text-[#444] font-pixel uppercase tracking-widest">
+          {locations.length} Locations
         </div>
       </div>
     </div>
@@ -46,4 +63,3 @@ const Sidebar: React.FC<SidebarProps> = ({
 };
 
 export default Sidebar;
-

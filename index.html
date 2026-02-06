@@ -5,37 +5,405 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive World Map 🌍</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
   <style>
+    :root {
+      --retro-bg: #0a0a0f;
+      --retro-card: #12121a;
+      --retro-pink: #ff2d95;
+      --retro-cyan: #0ff;
+      --retro-green: #39ff14;
+      --retro-red: #ff3131;
+      --retro-border: #2a2a3a;
+    }
     body, html, #root {
       height: 100%;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .font-pixel {
+      font-family: 'VT323', monospace;
+    }
+
+
+    /* Clean macOS-style card */
+    .mac-card {
+      box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Glowing text */
+    .glow-pink {
+      text-shadow:
+        0 0 8px rgba(255, 45, 149, 0.5),
+        0 0 16px rgba(255, 45, 149, 0.35),
+        0 0 30px rgba(255, 45, 149, 0.2);
+    }
+
+    .glow-cyan {
+      text-shadow:
+        0 0 8px rgba(0, 255, 255, 0.5),
+        0 0 16px rgba(0, 255, 255, 0.35),
+        0 0 30px rgba(0, 255, 255, 0.2);
+    }
+
+    /* Retro button style */
+    .retro-btn {
+      font-family: 'VT323', monospace;
+      border: 3px solid;
+      position: relative;
+      transition: all 0.1s ease;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .retro-btn::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      right: -6px;
+      width: 100%;
+      height: 100%;
+      border: 3px solid;
+      border-color: inherit;
+      opacity: 0.3;
+      z-index: -1;
+    }
+    .retro-btn:hover {
+      transform: translate(-2px, -2px);
+    }
+    .retro-btn:active {
+      transform: translate(2px, 2px);
+    }
+
+
+    /* Typing cursor */
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    .cursor-blink::after {
+      content: '_';
+      animation: blink 1s infinite;
+    }
+
+    /* Handwritten font */
+    .font-handwritten {
+      font-family: 'Caveat', cursive;
+    }
+
+    /* Scanline overlay */
+    .scanlines {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.25) 0px,
+        rgba(0, 0, 0, 0.25) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      z-index: 10;
+    }
+
+    /* Subtle flicker */
+    @keyframes subtleFlicker {
+      0%, 100% { opacity: 1; }
+      97% { opacity: 0.98; }
+      98% { opacity: 1; }
+      99% { opacity: 0.96; }
+    }
+    .flicker-subtle {
+      animation: subtleFlicker 8s infinite;
+    }
+
+    /* Polaroid card */
+    .polaroid {
+      background: #fafafa;
+      padding: 12px 12px 40px 12px;
+      box-shadow:
+        0 4px 6px rgba(0, 0, 0, 0.3),
+        0 10px 40px rgba(0, 0, 0, 0.4),
+        0 0 60px rgba(255, 45, 149, 0.15);
+      transition: all 0.3s ease-out;
+    }
+
+    /* Polaroid pop animation */
+    @keyframes polaroidPop {
+      0% {
+        opacity: 0;
+        transform: scale(0.3) rotate(0deg);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.05) rotate(var(--rotation));
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(var(--rotation));
+      }
+    }
+
+    @keyframes polaroidClose {
+      0% {
+        opacity: 1;
+        transform: scale(1) rotate(var(--rotation));
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.3) rotate(0deg);
+      }
+    }
+
+    .polaroid-enter {
+      animation: polaroidPop 0.4s ease-out forwards;
+    }
+
+    .polaroid-exit {
+      animation: polaroidClose 0.3s ease-out forwards;
     }
     .leaflet-container {
       height: 100%;
       width: 100%;
-      background: #f0f4f8;
+      background: #0a0a0a;
     }
-    /* Simple hover scale for markers, no constant pulse */
+    /* Invert tiles for tactical look */
+    .leaflet-tile-pane {
+      filter: invert(1) brightness(0.35) contrast(1.3);
+    }
+    /* Grid overlay */
+    .map-grid-overlay {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: 1000;
+    }
+    /* Subtle map scanlines */
+    .map-scanlines {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 3px
+      );
+      z-index: 1001;
+    }
+
+    /* Hand Tracking HUD: neon pink corner borders + flickering label */
+    .webcam-hud {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 3000;
+      transform: scaleX(-1);
+    }
+    .webcam-hud-label {
+      font-family: 'VT323', monospace;
+      font-size: 11px;
+      color: #ff2d95;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
+      text-shadow: 0 0 8px #ff2d95;
+      animation: hud-flicker 2s ease-in-out infinite;
+    }
+    @keyframes hud-flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+      52% { opacity: 1; }
+      54% { opacity: 0.7; }
+      56% { opacity: 1; }
+    }
+    .webcam-preview {
+      position: relative;
+      width: 200px;
+      height: 150px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 20px rgba(255, 45, 149, 0.4);
+      background: #111;
+      border: 2px solid #ff2d95;
+    }
+    .webcam-corners {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+    .webcam-corners span {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: #ff2d95;
+      border-style: solid;
+      border-width: 0;
+      box-shadow: 0 0 10px #ff2d95;
+    }
+    .webcam-corners .corner-tl {
+      top: 0; left: 0;
+      border-top-width: 3px; border-left-width: 3px;
+      border-radius: 12px 0 0 0;
+    }
+    .webcam-corners .corner-tr {
+      top: 0; right: 0;
+      border-top-width: 3px; border-right-width: 3px;
+      border-radius: 0 12px 0 0;
+    }
+    .webcam-corners .corner-bl {
+      bottom: 0; left: 0;
+      border-bottom-width: 3px; border-left-width: 3px;
+      border-radius: 0 0 0 12px;
+    }
+    .webcam-corners .corner-br {
+      bottom: 0; right: 0;
+      border-bottom-width: 3px; border-right-width: 3px;
+      border-radius: 0 0 12px 0;
+    }
+    .webcam-preview video,
+    .webcam-preview canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+      display: block;
+    }
+    .webcam-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    /* Pink cursor dot */
+    .hand-cursor {
+      position: fixed;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #ff007f;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      box-shadow:
+        0 0 10px #ff007f,
+        0 0 20px #ff007f,
+        0 0 40px #ff007f,
+        0 0 60px rgba(255, 0, 127, 0.5);
+      transition: transform 0.05s ease-out;
+    }
+    .hand-cursor.dwelling {
+      animation: dwell-pulse 0.3s ease-in-out infinite;
+    }
+    /* Loading ring: always visible around cursor, fills over 1.5s when hovering marker */
+    .dwell-ring {
+      position: fixed;
+      width: 60px;
+      height: 60px;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+    }
+    .dwell-ring .ring-bg {
+      stroke: rgba(255, 0, 127, 0.25);
+    }
+    .dwell-ring .ring-progress {
+      stroke: #ff007f;
+      stroke-dasharray: 157;
+      stroke-dashoffset: var(--progress, 157);
+      transition: stroke-dashoffset 0.05s linear;
+    }
+    .dwell-ring.idle .ring-progress {
+      opacity: 0.4;
+    }
+    .dwell-ring.active .ring-progress {
+      opacity: 1;
+    }
+
+    @keyframes dwell-pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.3); }
+    }
+
+    /* Gesture indicator */
+    .gesture-indicator {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #333;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-family: 'VT323', monospace;
+      font-size: 14px;
+      color: #888;
+      z-index: 3001;
+    }
+    .gesture-indicator .gesture-name {
+      color: #ff007f;
+      text-transform: uppercase;
+    }
+    /* Marker style: glow effect */
     .heart-marker {
       transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      filter: drop-shadow(0 0 10px #ff007f) drop-shadow(0 0 8px rgba(255, 45, 149, 0.8)) drop-shadow(0 0 20px rgba(255, 45, 149, 0.4));
     }
     .heart-marker:hover {
       transform: scale(1.35) !important;
-      filter: drop-shadow(0 4px 8px rgba(244, 114, 182, 0.4));
+      filter: drop-shadow(0 0 10px #ff007f) drop-shadow(0 0 12px rgba(255, 45, 149, 1)) drop-shadow(0 0 30px rgba(255, 45, 149, 0.6));
       z-index: 1000 !important;
     }
     /* Hide Leaflet Attribution for cleaner look */
     .leaflet-control-attribution {
       font-size: 8px !important;
+      background: rgba(28, 28, 30, 0.8) !important;
+      color: #666 !important;
+    }
+    .leaflet-control-attribution a {
+      color: #888 !important;
     }
     .custom-tooltip {
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
-      border: 1px solid #fecdd3 !important;
+      background: #0a0a0a !important;
+      color: #fff !important;
+      border: 1px solid #444 !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+      font-family: 'VT323', monospace !important;
+      font-size: 14px !important;
+      padding: 8px 12px !important;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .leaflet-tooltip-top:before {
+      border-top-color: #444 !important;
+    }
+    .leaflet-tooltip-bottom:before {
+      border-bottom-color: #444 !important;
+    }
+    /* Dark zoom controls */
+    .leaflet-control-zoom a {
+      background: #1c1c1e !important;
+      color: #ff2d95 !important;
+      border-color: #3a3a3c !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background: #2c2c2e !important;
     }
   </style>
 <script type="importmap">

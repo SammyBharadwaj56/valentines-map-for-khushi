@@ -1,14 +1,12 @@
-import React, { useState, useCallback } from 'react';
-import MapComponent from './components/MapComponent';
-import SidePanel from './components/SidePanel';
+import React, { useState, useCallback, useRef } from 'react';
+import MapComponent, { MapComponentHandle } from './components/MapComponent';
+import PolaroidCard, { PolaroidCardHandle } from './components/PolaroidCard';
 import IntroOverlay from './components/IntroOverlay';
 import Sidebar from './components/Sidebar';
+import HandTracking from './components/HandTracking';
 import {
   LOCATIONS,
-  HEADER_EMOJI,
   HEADER_TITLE,
-  HEADER_SUBTITLE,
-  MOBILE_INSTRUCTIONS
 } from './config';
 import { LocationData } from './types';
 
@@ -16,83 +14,126 @@ const App: React.FC = () => {
   const [showIntro, setShowIntro] = useState(true);
   const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(null);
   const [currentZoom, setCurrentZoom] = useState(3);
+  const [handTrackingEnabled, setHandTrackingEnabled] = useState(false);
+
+  const mapRef = useRef<MapComponentHandle>(null);
+  const polaroidRef = useRef<PolaroidCardHandle>(null);
 
   const handleLocationClick = useCallback((loc: LocationData) => {
     setSelectedLocation(loc);
   }, []);
 
   const handleMapClick = useCallback(() => {
-    setSelectedLocation(null);
+    // Don't close on map click - only close via the polaroid close button
   }, []);
 
   const handleStart = useCallback(() => {
     setShowIntro(false);
   }, []);
 
+  // Hand tracking callbacks
+  const handleHandPan = useCallback((dx: number, dy: number) => {
+    mapRef.current?.panBy(dx, dy);
+  }, []);
+
+  const handleHandZoom = useCallback((delta: number) => {
+    mapRef.current?.zoomBy(delta);
+  }, []);
+
+  const handleMarkerHover = useCallback((x: number, y: number): string | null => {
+    return mapRef.current?.getMarkerAtPoint(x, y) || null;
+  }, []);
+
+  const handleMarkerClick = useCallback((markerId: string) => {
+    const location = LOCATIONS.find(loc => loc.id === markerId);
+    if (location) {
+      setSelectedLocation(location);
+    }
+  }, []);
+
   return (
-    <div className="relative w-full h-full flex flex-col bg-gray-50 overflow-hidden">
+    <div className="relative w-full h-full bg-[#0a0a0a] overflow-hidden">
       {showIntro && <IntroOverlay onStart={handleStart} />}
 
-      {/* Header Bar */}
-      <header className="fixed top-0 left-0 right-0 z-[600] bg-white/90 backdrop-blur-sm border-b border-gray-200 h-16 flex items-center justify-between px-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl animate-bounce">{HEADER_EMOJI}</span>
-          <div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+      {/* Full-page tactical layout */}
+      <div className="w-full h-full flex flex-col bg-[#0a0a0a] overflow-hidden">
+        {/* Header bar */}
+        <header className="flex items-center px-6 py-3 bg-[#0a0a0a] border-b border-[#333]">
+          <div className="flex items-center gap-2">
+            <span className="text-[#ff2d95]">◈</span>
+            <h1 className="font-pixel text-sm text-[#888] uppercase tracking-widest">
               {HEADER_TITLE}
             </h1>
-            <div className="flex items-center gap-2">
-               <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest hidden sm:block">
-                {HEADER_SUBTITLE}
-              </p>
+          </div>
+          <div className="flex-1" />
+          <div className="flex items-center gap-6 text-xs font-pixel">
+            <div className="text-[#555]">
+              ZOOM: <span className="text-[#888]">{currentZoom.toFixed(1)}x</span>
             </div>
+            <div className="text-[#555]">
+              MARKERS: <span className="text-[#ff2d95]">{LOCATIONS.length}</span>
+            </div>
+            {/* Hand tracking toggle */}
+            <button
+              onClick={() => setHandTrackingEnabled(!handTrackingEnabled)}
+              className={`px-3 py-1 border rounded transition-all ${
+                handTrackingEnabled
+                  ? 'border-[#ff2d95] text-[#ff2d95] bg-[#ff2d95]/10'
+                  : 'border-[#444] text-[#666] hover:border-[#666]'
+              }`}
+            >
+              ✋ {handTrackingEnabled ? 'ON' : 'OFF'}
+            </button>
           </div>
-        </div>
+        </header>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end">
-             <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Zoom Level</span>
-             <span className="text-pink-600 font-mono font-bold">{currentZoom.toFixed(1)}x</span>
-          </div>
-        </div>
-      </header>
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Map View */}
+          <main className="flex-1 relative">
+            <MapComponent
+              ref={mapRef}
+              locations={LOCATIONS}
+              selectedLocation={selectedLocation}
+              onLocationClick={handleLocationClick}
+              onMapClick={handleMapClick}
+              onZoomChange={setCurrentZoom}
+            />
+            {/* Grid overlay */}
+            <div className="map-grid-overlay" />
+            {/* Subtle scanlines */}
+            <div className="map-scanlines" />
+          </main>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex pt-16 overflow-hidden">
-        {/* Sidebar Nav */}
-        <Sidebar 
-          locations={LOCATIONS} 
-          onSelect={handleLocationClick} 
-          selectedId={selectedLocation?.id}
-        />
-
-        {/* Map View */}
-        <main className="flex-1 relative bg-[#f0f4f8]">
-          <MapComponent 
+          {/* Sidebar Nav - Right side */}
+          <Sidebar
             locations={LOCATIONS}
-            selectedLocation={selectedLocation}
-            onLocationClick={handleLocationClick}
-            onMapClick={handleMapClick}
-            onZoomChange={setCurrentZoom}
+            onSelect={handleLocationClick}
+            selectedId={selectedLocation?.id}
           />
-        </main>
+        </div>
       </div>
 
-      {/* Details Side Panel */}
-      <SidePanel 
-        location={selectedLocation} 
-        onClose={() => setSelectedLocation(null)} 
+      {/* Polaroid Card Modal */}
+      <PolaroidCard
+        ref={polaroidRef}
+        location={selectedLocation}
+        onClose={() => setSelectedLocation(null)}
       />
 
-      {/* Mobile Instructions */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[700] bg-white/90 px-4 py-2 rounded-full shadow-lg border border-pink-100 backdrop-blur-sm pointer-events-none">
-        <p className="text-[10px] text-pink-600 font-bold text-center whitespace-nowrap">
-          {MOBILE_INSTRUCTIONS}
-        </p>
-      </div>
+      {/* Hand Tracking Layer */}
+      <HandTracking
+        enabled={handTrackingEnabled}
+        onPan={handleHandPan}
+        onZoom={handleHandZoom}
+        onMarkerHover={handleMarkerHover}
+        onMarkerClick={handleMarkerClick}
+        polaroidOpen={!!selectedLocation}
+        onSwipeLeft={() => polaroidRef.current?.nextImage()}
+        onSwipeRight={() => polaroidRef.current?.prevImage()}
+      />
     </div>
   );
 };
 
 export default App;
-
